@@ -16,7 +16,7 @@ class ChatGPTFunctionAnalyzerConfig(ChatGPTConfig):
 
 
 class ChatGPTFunctionAnalyzer(Analyzer[ChatGPTFunctionAnalyzerConfig, ChatGPTAnalysis]):
-    # targets = (Program,)
+    targets = (Program,)
     outputs = (ChatGPTAnalysis,)
 
     async def analyze(
