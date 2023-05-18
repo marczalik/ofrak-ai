@@ -1,8 +1,8 @@
 import logging
-import openai
 
 from dataclasses import dataclass
 from openai.error import OpenAIError
+from tiktoken import Encoding, encoding_for_model
 
 from ofrak import Resource
 from ofrak.component.analyzer import Analyzer
@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 @dataclass
 class ChatGPTFunctionAnalyzerConfig(ChatGPTConfig):
-    pass
+    encoding: Encoding = encoding_for_model(ChatGPTConfig.model)
 
 
 class ChatGPTFunctionAnalyzer(Analyzer[ChatGPTFunctionAnalyzerConfig, ChatGPTAnalysis]):
@@ -39,14 +39,19 @@ class ChatGPTFunctionAnalyzer(Analyzer[ChatGPTFunctionAnalyzerConfig, ChatGPTAna
                             \tSummarize this assembly code and explain your reasoning as much as possible.\n\
                             \tWITHOUT USING INLINE ASSEMBLY OR THE __asm__ FUNCTION, decompile it into equivalent pseudo-C code with high-level comments.\n\
                             \tGuess the closest matching library function based on function signature.\n\
-                            \tAnd finally, suggest suitable names for the function in question."
+                            \tAnd finally, suggest suitable names for the function in question.",
             }
         ]
+        encoding_length = len(config.encoding.encode(history[0]["content"]))
+        if encoding_length >= 4000:
+            return
         try:
-            response = await get_chatgpt_response(history=history, max_tokens=2000, config=config)
+            response = await get_chatgpt_response(
+                history=history, max_tokens=4096 - encoding_length, config=config
+            )
 
         except OpenAIError as e:
             # openai's error messages are rather unhelpful. Log traceback for additional details
             LOGGER.exception(f"Exception occurred, skipped {cb.Symbol}")
-            
+
         return ChatGPTAnalysis(response.choices[0].message.content)
